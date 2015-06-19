@@ -1,67 +1,79 @@
 package image
 
 import (
-    mag "github.com/mantyr/golang-magick"
     "fmt"
     "errors"
     "strings"
     "os"
+    "image"
+    "image/jpeg"
+    "image/png"
+    "image/gif"
+//    _ "image/draw"
+    "golang.org/x/image/tiff"
+    "golang.org/x/image/bmp"
 )
 
 type Image struct {
-    Image *mag.Image
+    Image *image.NRGBA
     Address string
     Format string
     Quality int
+    width int
+    height int
     Error error
 }
 
 const (
-    FormatTIFF string = "TIFF"
-    FormatJPEG string = "JPEG"
-    FormatGIF  string = "GIF"
-    FormatPNG  string = "PNG"
+    FormatTIFF string = "tiff"
+    FormatJPEG string = "jpeg"
+    FormatGIF  string = "gif"
+    FormatPNG  string = "png"
+    FormatBMP  string = "bmp"
 )
 
-var Formats []string
+var Formats = [5]string{"tiff", "jpeg", "gif", "png", "bmp"}
 
-func init() {
-    Formats, _ = mag.SupportedFormats()
-}
+func Open(address string) (i *Image, err error){
+    i = new(Image)
+    i.Address = address
+    i.Quality = 100
 
-func Open(address string) (image *Image, err error){
-    image = new(Image)
-    image.Address = address
-    image.Quality = 100
-
-    image.Image, image.Error = mag.DecodeFile(address)
-    err = image.Error
+    file, err := os.Open(address)
     if err != nil {
+        i.Error = err
         return
     }
+    defer file.Close()
+    var img image.Image
+    img, i.Format, err = image.Decode(file)
+    if err != nil {
+        i.Error = err
+        return
+    }
+    i.Image = toNRGBA(img)
 
-    image.Format = image.Image.Format()
+    err = i.GetConfig()
+    if err != nil {
+        i.Error = err
+        return
+    }
     return
 }
 
-func (i *Image) Width() int {
-    return i.Image.Width()
-}
-
-func (i *Image) Height() int {
-    return i.Image.Height()
-}
-
-func (i *Image) Width64() float64 {
-    return float64(i.Image.Width())
-}
-
-func (i *Image) Height64() float64 {
-    return float64(i.Image.Height())
-}
-
-func (i *Image) SetFormat(format string) {
-    i.Format = format
+func (i *Image) GetConfig() (err error) {
+    file, err := os.Open(i.Address)
+    if err != nil {
+        return
+    }
+    defer file.Close()
+    conf, _, err := image.DecodeConfig(file)
+    if err != nil {
+        return
+    }
+    i.width  = conf.Width
+    i.height = conf.Height
+    return
 }
 
 func (i *Image) Save(params ...string) (err error) {
@@ -71,22 +83,43 @@ func (i *Image) Save(params ...string) (err error) {
         }
         return errors.New("no image")
     }
+
     address := i.Address
     if len(params) > 0 && strings.Trim(params[0], " \n\t\r") != "" {
         address = params[0]
     }
+
     file, err := os.Create(address)
     defer file.Close()
 
-    if err != nil {
-        return
+    switch i.Format {
+        case FormatJPEG:
+            var rgba *image.RGBA
+            if i.Image.Opaque() {
+                rgba = &image.RGBA{
+                    Pix:    i.Image.Pix,
+                    Stride: i.Image.Stride,
+                    Rect:   i.Image.Rect,
+                }
+            }
+
+            if rgba != nil {
+                err = jpeg.Encode(file, rgba, &jpeg.Options{Quality: i.Quality})
+            } else {
+                err = jpeg.Encode(file, i.Image, &jpeg.Options{Quality: i.Quality})
+            }
+        case FormatPNG:
+            encoder := &png.Encoder{CompressionLevel: png.NoCompression}
+            err = encoder.Encode(file, i.Image)
+        case FormatGIF:
+            err = gif.Encode(file, i.Image, &gif.Options{NumColors: 256})
+        case FormatTIFF:
+            err = tiff.Encode(file, i.Image, &tiff.Options{Compression: tiff.Uncompressed, Predictor: true})
+        case FormatBMP:
+            err = bmp.Encode(file, i.Image)
+        default:
+            err = errors.New("unsupported image format "+i.Format)
     }
-
-    info := mag.NewInfo()
-    info.SetFormat(i.Format)
-    info.SetQuality(uint(i.Quality))
-
-    err = i.Image.Encode(file, info)
     return
 }
 
@@ -128,27 +161,55 @@ func (i *Image) ResizeCrop(width, height int) (image *Image) {
         }
     }()
 
-    image.Image, image.Error = i.Image.CropResize(width, height, mag.FQuadratic, mag.CSCenter)
+//    image.Image, image.Error = i.Image.CropResize(width, height, mag.FQuadratic, mag.CSCenter)
     if image.Error != nil {
         return
     }
-    image.Format = image.Image.Format()
+//    image.Format = image.Image.Format()
     return
 }
 
-func (i *Image) Resize(width, height int) (image *Image) {
+func (i *Image) Resize(width, height int, params ...ResampleFilter) (image *Image) {
     image = new(Image)
+    image.width = i.Width()
+    image.height = i.Height()
+    image.Quality = 100
     defer func() {
         if r := recover(); r != nil {
             image.Error = errors.New(fmt.Sprintf("%v", r))
         }
     }()
 
-    image.Image, image.Error = i.Image.Resize(width, height, mag.FQuadratic)
-    if image.Error != nil {
-        return
+    filter := Lanczos
+    if len(params) > 0 {
+        filter = params[0]
     }
-    image.Format = image.Image.Format()
+
+    if filter.Support <= 0.0 {
+        image.Image, image.Error = i.resize(width, height)
+    } else {
+        if width != i.Width() {
+            image.Image, image.Error = i.resizeW(width, filter)
+            image.width = width
+        }
+        if image.Error != nil {
+            return
+        }
+        if height != i.Height() {
+            image.Image, image.Error = image.resizeH(height, filter)
+            image.height = height
+        }
+    }
+    image.Format = i.Format
     return
 }
 
+func toNRGBA(i image.Image) *image.NRGBA {
+    srcBounds := i.Bounds()
+    if srcBounds.Min.X == 0 && srcBounds.Min.Y == 0 {
+        if src0, ok := i.(*image.NRGBA); ok {
+            return src0
+        }
+    }
+    return Clone(i)
+}
