@@ -16,7 +16,9 @@ func TestOpenAndResize(t *testing.T) {
     if img.Width() != 457 || img.Height() != 343 {
         t.Errorf("Error size, %q %q", fmt.Sprintf("%v", img.Width()), fmt.Sprintf("%v", img.Height()))
     }
-    fmt.Println(fmt.Sprintf("%v", img.Quality))
+    if img.Quality != 100 {
+        t.Errorf("Error default quality, %q", img.Quality)
+    }
 
     img_small := img.Resize(100, 100)
     img_small.Format = "jpeg"
@@ -29,6 +31,9 @@ func TestOpenAndResize(t *testing.T) {
     }
     if img_small.Width() != 100 || img_small.Height() != 100 {
         t.Errorf("Error resize size, %q %q", fmt.Sprintf("%v", img_small.Width()), fmt.Sprintf("%v", img_small.Height()))
+    }
+    if img_small.Quality != 100 {
+        t.Errorf("Error resize default quality, %q", img_small.Quality)
     }
 
     err = img_small.Save("./testdata/test_save.jpg")

@@ -46,6 +46,7 @@ func Open(address string) (i *Image, err error){
     }
     defer file.Close()
     var img image.Image
+
     img, i.Format, err = image.Decode(file)
     if err != nil {
         i.Error = err
@@ -53,26 +54,8 @@ func Open(address string) (i *Image, err error){
     }
     i.Image = toNRGBA(img)
 
-    err = i.GetConfig()
-    if err != nil {
-        i.Error = err
-        return
-    }
-    return
-}
-
-func (i *Image) GetConfig() (err error) {
-    file, err := os.Open(i.Address)
-    if err != nil {
-        return
-    }
-    defer file.Close()
-    conf, _, err := image.DecodeConfig(file)
-    if err != nil {
-        return
-    }
-    i.width  = conf.Width
-    i.height = conf.Height
+    i.width = i.Image.Bounds().Max.X
+    i.height = i.Image.Bounds().Max.Y
     return
 }
 
