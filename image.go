@@ -106,7 +106,7 @@ func (i *Image) Save(params ...string) (err error) {
     return
 }
 
-func (i *Image) ResizeMax(width, height int) (image *Image){
+func (i *Image) ResizeMax(width, height int, params ...ResampleFilter) (image *Image){
     var w_ratio float64 = float64(width) / i.Width64()
     var h_ratio float64 = float64(height) / i.Height64()
 
@@ -115,10 +115,10 @@ func (i *Image) ResizeMax(width, height int) (image *Image){
     } else {
         width  = int(i.Width64() * h_ratio)
     }
-    return i.Resize(width, height)
+    return i.Resize(width, height, params...)
 }
 
-func (i *Image) ResizeMin(width, height int) *Image{
+func (i *Image) ResizeMin(width, height int, params ...ResampleFilter) *Image{
     var w_ratio float64 = float64(width) / i.Width64()
     var h_ratio float64 = float64(height) / i.Height64()
 
@@ -133,7 +133,7 @@ func (i *Image) ResizeMin(width, height int) *Image{
     } else {
         new_width = int(i.Width64() * h_ratio)
     }
-    return i.Resize(new_width, new_height)
+    return i.Resize(new_width, new_height, params...)
 }
 
 func (i *Image) ResizeCrop(width, height int) (image *Image) {
