@@ -1,4 +1,4 @@
-package image
+package images
 
 import (
     "fmt"
@@ -106,11 +106,13 @@ func (i *Image) Save(params ...string) (err error) {
     return
 }
 
-func (i *Image) ResizeMax(width, height int, params ...ResampleFilter) (image *Image){
-    var w_ratio float64 = float64(width) / i.Width64()
+// Картинка больше прямоугольника
+func (i *Image) ResizeOut(width, height int, params ...ResampleFilter) (image *Image){
+    var w_ratio float64 = float64(width)  / i.Width64() 
     var h_ratio float64 = float64(height) / i.Height64()
 
-    if w_ratio < h_ratio {
+    if w_ratio == h_ratio {
+    } else if w_ratio > h_ratio {
         height = int(i.Height64() * w_ratio)
     } else {
         width  = int(i.Width64() * h_ratio)
@@ -118,37 +120,48 @@ func (i *Image) ResizeMax(width, height int, params ...ResampleFilter) (image *I
     return i.Resize(width, height, params...)
 }
 
-func (i *Image) ResizeMin(width, height int, params ...ResampleFilter) *Image{
-    var w_ratio float64 = float64(width) / i.Width64()
+// Картинка меньше прямоугольника
+func (i *Image) ResizeIn(width, height int, params ...ResampleFilter) *Image{
+    var w_ratio float64 = float64(width)  / i.Width64() 
     var h_ratio float64 = float64(height) / i.Height64()
 
     if w_ratio == h_ratio {
-        return i.Resize(width, height)
-    }
-    var new_width int  = width
-    var new_height int = height
-
-    if w_ratio > h_ratio {
-        new_height = int(i.Height64() * w_ratio)
+    } else if w_ratio < h_ratio {
+        height = int(i.Height64() * w_ratio)
     } else {
-        new_width = int(i.Width64() * h_ratio)
+        width  = int(i.Width64() * h_ratio)
     }
-    return i.Resize(new_width, new_height, params...)
+    return i.Resize(width, height, params...)
 }
 
-func (i *Image) ResizeCrop(width, height int) (image *Image) {
-    image = new(Image)
+func (i *Image) ResizeCrop(width, height int, params ...ResampleFilter) (img *Image) {
+    img = i.ResizeOut(width, height, params...)
     defer func() {
         if r := recover(); r != nil {
-            image.Error = errors.New(fmt.Sprintf("%v", r))
+            img.Error = errors.New(fmt.Sprintf("%v", r))
         }
     }()
 
-//    image.Image, image.Error = i.Image.CropResize(width, height, mag.FQuadratic, mag.CSCenter)
-    if image.Error != nil {
+    if img.Width() == width && img.Height() == height {
         return
     }
-//    image.Format = image.Image.Format()
+
+    Min := image.Point{}
+    Min.X = int((img.Width() - width)/2)
+    Min.Y = int((img.Height() - height)/2)
+
+    Max := image.Point{}
+    Max.X = Min.X + width
+    Max.Y = Min.Y + height
+
+    res := image.Rectangle{Min: Min, Max: Max}
+    sub := img.Image.SubImage(res)
+//    img.Image = Clone(sub)
+    img.Image = toNRGBA(sub)
+
+    img.width = width
+    img.height= height
+
     return
 }
 
@@ -187,6 +200,7 @@ func (i *Image) Resize(width, height int, params ...ResampleFilter) (image *Imag
     return
 }
 
+// In the future be replaced by toYCbCr
 func toNRGBA(i image.Image) *image.NRGBA {
     srcBounds := i.Bounds()
     if srcBounds.Min.X == 0 && srcBounds.Min.Y == 0 {

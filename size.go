@@ -1,4 +1,4 @@
-package image
+package images
 
 func (i *Image) Width() int {
     return i.width
