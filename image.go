@@ -107,7 +107,7 @@ func (i *Image) Save(params ...string) (err error) {
 }
 
 // Картинка больше прямоугольника
-func (i *Image) ResizeOut(width, height int, params ...ResampleFilter) (image *Image){
+func (i *Image) ResizeOut(width, height int, params ...ResampleFilter) *Image {
     var w_ratio float64 = float64(width)  / i.Width64() 
     var h_ratio float64 = float64(height) / i.Height64()
 
@@ -121,7 +121,7 @@ func (i *Image) ResizeOut(width, height int, params ...ResampleFilter) (image *I
 }
 
 // Картинка меньше прямоугольника
-func (i *Image) ResizeIn(width, height int, params ...ResampleFilter) *Image{
+func (i *Image) ResizeIn(width, height int, params ...ResampleFilter) *Image {
     var w_ratio float64 = float64(width)  / i.Width64() 
     var h_ratio float64 = float64(height) / i.Height64()
 
