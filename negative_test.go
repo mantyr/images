@@ -53,6 +53,20 @@ func TestNegative(t *testing.T) {
         t.Errorf("Error negative open size, %q %q", fmt.Sprintf("%v", img2.Width()), fmt.Sprintf("%v", img2.Height()))
     }
 
+}
+
+func TestHashFile(t *testing.T) {
+    file, err := os.Open("./testdata/test.jpg")
+    if err != nil {
+        t.Errorf("Error image open, %q", err)
+    }
+    hashfile := GetHashFile(file)
+    if hashfile != "e269a4995ad439664251b38951448022706e037b40d243475f1bb3ae74329212" {
+        t.Errorf("Error image hash256 file, %q", hashfile)
+    }
+}
+
+func TestHashFileNegative(t *testing.T) {
     file, err := os.Open("./testdata/test_negative.jpg")
     if err != nil {
         t.Errorf("Error negative open, %q", err)
@@ -62,3 +76,4 @@ func TestNegative(t *testing.T) {
         t.Errorf("Error negative hash256 file, %q", hashfile)
     }
 }
+
