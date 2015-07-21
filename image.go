@@ -200,6 +200,23 @@ func (i *Image) Resize(width, height int, params ...ResampleFilter) (image *Imag
     return
 }
 
+// Превращает изображение в негатив или наоборот
+func (i *Image) Negative() (image *Image) {
+    image = new(Image)
+    image.width = i.Width()
+    image.height = i.Height()
+    image.Quality = 100
+    defer func() {
+        if r := recover(); r != nil {
+            image.Error = errors.New(fmt.Sprintf("%v", r))
+        }
+    }()
+
+    image.Image, image.Error = i.negative()
+    image.Format = i.Format
+    return
+}
+
 // In the future be replaced by toYCbCr
 func toNRGBA(i image.Image) *image.NRGBA {
     srcBounds := i.Bounds()
