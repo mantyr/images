@@ -34,6 +34,11 @@ const (
 
 var Formats = [5]string{"tiff", "jpeg", "gif", "png", "bmp"}
 
+func OpenFile(file *os.File) (i *Image, err error) {
+    i, err = Open(file.Name())
+    return
+}
+
 func Open(address string) (i *Image, err error){
     i = new(Image)
     i.Address = address
