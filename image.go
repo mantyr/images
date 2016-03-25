@@ -12,6 +12,10 @@ import (
 //    _ "image/draw"
     "golang.org/x/image/tiff"
     "golang.org/x/image/bmp"
+
+    "crypto/sha256"
+    "encoding/hex"
+    "io"
 )
 
 type Image struct {
@@ -79,7 +83,28 @@ func (i *Image) Save(params ...string) (err error) {
 
     file, err := os.Create(address)
     defer file.Close()
+    if err != nil {
+        return
+    }
+    err = i.write(file)
+    return
+}
 
+func (i *Image) GetHash() string {
+    if i.Image == nil {
+        return ""
+    }
+
+    hash := sha256.New()
+    err := i.write(hash)
+
+    if err != nil {
+        return ""
+    }
+    return hex.EncodeToString(hash.Sum(nil))
+}
+
+func (i *Image) write(file io.Writer) (err error) {
     switch i.Format {
         case FormatJPEG:
             var rgba *image.RGBA
