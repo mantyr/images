@@ -19,13 +19,13 @@ import (
 )
 
 type Image struct {
-    Image *image.NRGBA
-    Address string
-    Format string
-    Quality int
-    width int
-    height int
-    Error error
+    Image       *image.NRGBA
+    Address     string
+    Format      string
+    Quality     int
+    width       int
+    height      int
+    Error       error
 }
 
 const (
@@ -66,6 +66,31 @@ func Open(address string) (i *Image, err error){
     i.width = i.Image.Bounds().Max.X
     i.height = i.Image.Bounds().Max.Y
     return
+}
+
+func (i *Image) SetQuality(quality int) *Image {
+    if quality < 0 {
+        quality = 0
+    } else if quality > 100 {
+        quality = 100
+    }
+    i.Quality = quality
+    return i
+}
+
+func (i *Image) SetPNGNoCompression() *Image {
+    i.Quality = 100
+    return i
+}
+
+func (i *Image) SetPNGBestSpeed() *Image {
+    i.Quality = 50
+    return i
+}
+
+func (i *Image) SetPNGBestCompression() *Image {
+    i.Quality = 0
+    return i
 }
 
 func (i *Image) Save(params ...string) (err error) {
@@ -122,7 +147,14 @@ func (i *Image) write(file io.Writer) (err error) {
                 err = jpeg.Encode(file, i.Image, &jpeg.Options{Quality: i.Quality})
             }
         case FormatPNG:
-            encoder := &png.Encoder{CompressionLevel: png.NoCompression}
+            var encoder *png.Encoder
+            if i.Quality == 100 {
+                encoder = &png.Encoder{CompressionLevel: png.NoCompression}
+            } else if i.Quality >= 50 {
+                encoder = &png.Encoder{CompressionLevel: png.BestSpeed}
+            } else if i.Quality < 50  {
+                encoder = &png.Encoder{CompressionLevel: png.BestCompression}
+            }
             err = encoder.Encode(file, i.Image)
         case FormatGIF:
             err = gif.Encode(file, i.Image, &gif.Options{NumColors: 256})
