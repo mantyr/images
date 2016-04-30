@@ -164,6 +164,14 @@ func (i *Image) ResizeIn(width, height int, params ...ResampleFilter) *Image {
     return i.Resize(width, height, params...)
 }
 
+// Картинка меньше прямоугольника, но если изначальный размер ещё меньше то картинка не растягивается
+func (i *Image) ResizeMax(width, height int, params ...ResampleFilter) *Image {
+    if i.Height() <= height && i.Width() <= width {
+        return i
+    }
+    return i.ResizeIn(width, height, params...)
+}
+
 func (i *Image) ResizeCrop(width, height int, params ...ResampleFilter) (img *Image) {
     img = i.ResizeOut(width, height, params...)
     defer func() {
