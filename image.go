@@ -10,8 +10,8 @@ import (
     "image/png"
     "image/gif"
 //    _ "image/draw"
-    "golang.org/x/image/tiff"
-    "golang.org/x/image/bmp"
+    "github.com/mantyr/image/tiff"
+    "github.com/mantyr/image/bmp"
 
     "crypto/sha256"
     "encoding/hex"
